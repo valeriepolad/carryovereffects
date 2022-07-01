@@ -1,0 +1,226 @@
+---
+title: "Romero Depression Data"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+# setup and load data and packages
+library(psych)
+library(mirt)
+library(lavaan)
+library(gtools)
+library(mice)
+# Import Data
+
+setwd("~/Documents/Research/Reducing Carryover Effects in Within-Subjects Designs/research_project")
+reference_data <- read.csv("romero_data.csv")
+
+x <- 1:10
+permutation_matrix <- do.call(rbind, rep(list(x), 116))
+for (i in 1:116){
+  permutation_matrix[i,] <- sample(10)
+}
+
+# select which items are greater than 5 from permutation matrix for subsetting
+permutation_matrix_wave_1 <- replace(permutation_matrix, permutation_matrix > 5, TRUE)
+permutation_matrix_wave_1 <- replace(permutation_matrix, permutation_matrix <= 5, FALSE)
+permutation_matrix_wave_2 <- replace(permutation_matrix, permutation_matrix <= 5, TRUE)
+permutation_matrix_wave_2 <- replace(permutation_matrix, permutation_matrix > 5, FALSE)
+
+# set to true and NAs
+permutation_matrix_wave_1 <- replace(permutation_matrix_wave_1, permutation_matrix_wave_1 > 0, TRUE)
+permutation_matrix_wave_1 <- replace(permutation_matrix_wave_1, permutation_matrix_wave_1 == 0, FALSE)
+permutation_matrix_wave_2 <- replace(permutation_matrix_wave_2, permutation_matrix_wave_2 > 0, TRUE)
+permutation_matrix_wave_2 <- replace(permutation_matrix_wave_2, permutation_matrix_wave_2 == 0, FALSE)
+```
+
+
+```{r, include = FALSE}
+# split data into time points
+
+time_1 <- reference_data[3:12]
+time_2 <- reference_data[13:22]
+
+time_1_study_2 <- time_1
+time_2_study_2 <- time_2
+# time_3 <- reference_data[23:32]
+# time_4 <- reference_data[33:42]
+
+time_1_study_2 <- time_1_study_2*permutation_matrix_wave_1
+time_2_study_2 <- time_2_study_2*permutation_matrix_wave_2
+
+time_1_study_2 <- replace(time_1_study_2, time_1_study_2 == 0, NA)
+time_2_study_2 <- replace(time_2_study_2, time_2_study_2 == 0, NA)
+
+# correlation matrices with FIML
+time_1_2 <- lavCor(time_1,time_2,missing = "fiml")
+
+# impute
+
+imputed_data <- mice(time_1_study_2, m=5, maxit = 50, method = 'pmm', seed = 500)
+time_1_study_2 <- complete(imputed_data,2)
+imputed_data <- mice(time_2_study_2, maxit = 50, method = 'pmm', seed = 500)
+time_2_study_2 <- complete(imputed_data,2)
+
+study_2_corr <- lavCor(time_1_study_2,time_2_study_2)
+
+# time_2_3 <- lavCor(time_2,time_3,missing = "fiml")
+# time_3_4 <- lavCor(time_3,time_4,missing = "fiml")
+# time_1_4 <- lavCor(time_1,time_4,missing = "fiml")
+```
+
+
+# Scale Reliability Analyses
+
+
+```{r, eval = FALSE}
+# Study 1
+
+# Omega for Time 1 -> Time 2
+# OVERALL
+omega(time_1_2,nfactors = 1)
+# Omega = 0.81
+# Alpha = 0.8
+
+# scree plot overall
+scree1 <- fa.parallel(time_1_2, nfactors = 1, fa = 'fa', fm = 'ml',n.obs = 116)
+
+m1 <- fa(time_1_2,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m1
+
+omega(time_1,nfactors = 1)
+# 0.81
+
+# scree plot pre-test
+scree2 <- fa.parallel(time_1, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m2 <- fa(time_1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m2
+
+
+omega(time_2,nfactors = 1)
+# 0.83
+
+# scree plot post-test
+scree3 <- fa.parallel(time_2, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m3 <- fa(time_2,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m3
+
+# Study 2
+# OVERALL
+omega(study_2_corr,nfactors = 1)
+# Omega = 0.81
+
+# scree plot overall
+scree4 <- fa.parallel(study_2_corr, nfactors = 1, fa = 'fa', fm = 'ml', n.obs = 116)
+
+m4 <- fa(study_2_corr,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m4
+
+omega(time_1_study_2,nfactors = 1)
+# .81
+
+# scree plot pre
+scree5 <- fa.parallel(time_1_study_2, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m5 <- fa(time_1_study_2,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m5
+
+
+omega(time_2_study_2,nfactors = 1)
+# .79
+
+# scree plot post
+scree6 <- fa.parallel(time_2_study_2, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m6 <- fa(time_2_study_2,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m6
+```
+
+```{r, eval = FALSE}
+# Omega for Time 2 -> Time 3
+#omega(time_2_3,nfactors = 1)
+# Omega = 0.83
+# Alpha = 0.82
+
+```
+
+```{r, eval = FALSE}
+# Omega for Time 3 -> Time 4
+# omega(time_3_4,nfactors = 1)
+# Omega = 0.76
+# Alpha = 0.76
+```
+
+```{r, eval = FALSE}
+# Omega for Time 1 -> Time 4
+# omega(time_1_4,nfactors = 1)
+# Omega = 0.81
+# Alpha = 0.8
+```
+
+# Item Response Theory
+
+
+```{r, include = FALSE}
+# Wave 1 Item Characteristic Curves
+time_1_irt <- irt.fa(time_1, plot = FALSE)
+# Wave 2 Item Characteristic Curves
+time_2_irt <- irt.fa(time_2, plot = FALSE)
+
+# Study 2
+time_1_study_2_irt <- irt.fa(time_1_study_2, plot = FALSE)
+time_2_study_2_irt <- irt.fa(time_2_study_2, plot = FALSE)
+# Wave 3 Item Characteristic Curves
+# time_3_irt <- irt.fa(time_3, plot = FALSE)
+# Wave 4 Item Characteristic Curves
+# time_4_irt <- irt.fa(time_4, plot = FALSE)
+```
+
+```{r}
+# Wave 1
+plot.irt(time_1_irt, xlab = "Depression",main = "Wave 1", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+# Wave 2
+plot.irt(time_2_irt, xlab = "Depression",main = "Wave 2", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+
+# Wave 1
+plot.irt(time_1_study_2_irt, xlab = "Depression",main = "Wave 1", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+# Wave 2
+plot(time_2_study_2_irt, xlab = "Depression", main = "Wave 2", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+# Wave 3
+# plot.irt(time_3_irt, xlab = "Depression",main = "Wave 3", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+# Wave 4
+# plot.irt(time_4_irt, xlab = "Depression",main = "Wave 4", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Item 10"),xlim = c(-7,7),ylim = c(0,1))
+```
+
+
+# Descriptive Statistics
+
+```{r}
+# Wave 1
+describe(time_1,skew=FALSE)
+# Wave 2
+describe(time_2,skew=FALSE)
+
+# Study 2!!
+# Wave 1
+describe(time_1_study_2,skew=FALSE)
+# Wave 2
+describe(time_2_study_2,skew=FALSE)
+# Wave 3
+# describe(time_3,skew=FALSE)
+# Wave 4
+# describe(time_4,skew=FALSE)
+```
+

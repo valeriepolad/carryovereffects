@@ -1,0 +1,271 @@
+---
+title: "Reducing Carryover Effects in Within Subjects Designs"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+# setup and load data and packages
+
+setwd("~/Documents/Research/Reducing Carryover Effects in Within-Subjects Designs/split_half")
+
+library(haven)
+library(lme4)
+library(psych)
+library(MLmetrics)
+library(GPArotation)
+library(mirt)
+library(directlabels)
+library(jtools)
+library(ggplot2)
+study_1 <- read_sav("study1_separated.sav")
+study_2 <- read.csv("study_2_dichotamized.csv")
+```
+
+
+```{r, include = FALSE}
+# split data into scales for Study 1.
+# pre-test
+pre_anxiety <- study_1[1]
+pre_item_ME <- study_1[3:7]
+pre_total_ME <- study_1[47]
+
+# post-test
+post_anxiety <- study_1[2]
+post_item_ME <- study_1[18:22]
+post_total_ME <- study_1[48]
+
+# all items
+scale_1_items <- cbind(pre_item_ME,post_item_ME)
+
+# correlations
+ME_corr_matrix <- cor(pre_item_ME,post_item_ME)
+anxiety_corr <- cor(pre_anxiety,post_anxiety)
+anxiety_corr
+```
+
+
+```{r, include = FALSE}
+# Split data into scales for Study 2.
+# pre_test
+pre_anxiety_2 <- study_2[21]
+pre_item_attention <- study_2[1:10]
+pre_item_attention_copy <- pre_item_attention
+
+# post_test
+post_anxiety_2 <- study_2[22]
+post_item_attention <- study_2[11:20]
+post_item_attention_copy <- post_item_attention
+
+# combine
+pre_item_attention_copy[is.na(pre_item_attention)] <- 0
+pre_total_attention <- rowSums(pre_item_attention_copy)
+
+post_item_attention_copy[is.na(post_item_attention)] <- 0
+post_total_attention <- rowSums(post_item_attention_copy)
+
+# all items
+scale_2_items <- cbind(pre_item_attention_copy,post_item_attention_copy)
+
+# correlations
+attention_corr_matrix <- cor(pre_item_attention_copy,post_item_attention_copy)
+anxiety_corr_2 <- cor(pre_anxiety_2,post_anxiety_2)
+anxiety_corr_2
+```
+
+# Scale Reliability Analyses
+
+# Study 1:
+
+```{r, eval = FALSE}
+# Overall Scale Omega and Alpha
+omega(ME_corr_matrix,nfactors = 1)
+# Omega = 0.87
+# Alpha = 0.86
+```
+
+```{r, eval = FALSE}
+# Pre-test Omega and Alpha
+omega(pre_item_ME,nfactors = 1)
+# Omega = 0.4
+# Alpha = 0.4
+```
+
+```{r, eval = FALSE}
+# Post-test Omega and Alpha
+omega(post_item_ME,nfactors = 1)
+# Omega = 0.46
+# Alpha = 0.45
+```
+
+```{r, echo = FALSE}
+# scree plot pre-test
+scree1 <- fa.parallel(pre_item_ME, nfactors = 1, fa = 'fa', fm = 'ml')
+
+# orthogonal rotation with 1 factor
+m1 <- fa(pre_item_ME,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m1
+
+# scree plot post-test
+scree2 <- fa.parallel(post_item_ME, nfactors = 1, fa = 'fa', fm = 'ml')
+
+# orthogonal rotation with 1 factor
+m2 <- fa(post_item_ME,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m2
+
+# scree plot study 1 overall
+scree3 <- fa.parallel(scale_1_items, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m3 <- fa(scale_1_items,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m3
+
+```
+# Study 2:
+
+```{r, eval = FALSE}
+# Overall Scale Omega and Alpha
+omega(attention_corr_matrix,nfactors = 1)
+# Omega = 0.63
+# Alpha = 0.62
+```
+
+```{r, eval = FALSE}
+# Pre-test Omega and Alpha
+omega(pre_item_attention,nfactors = 1)
+# Omega = 0.67
+# Alpha = 0.67
+```
+
+```{r, eval = FALSE}
+# Post-test Omega and Alpha
+omega(post_item_attention,nfactors = 1)
+# Omega = 0.73
+# Alpha = 0.72
+```
+
+```{r, echo = FALSE}
+# scree plot pre-test
+scree4 <- fa.parallel(pre_item_attention, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m4 <- fa(pre_item_attention,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m4
+
+# scree plot post-test
+scree5 <- fa.parallel(post_item_attention, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m5 <- fa(post_item_attention,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m5
+
+# scree plot study 2 overall
+scree6 <- fa.parallel(scale_2_items, nfactors = 1, fa = 'fa', fm = 'ml')
+
+m6 <- fa(scale_2_items,nfactors=1,rotate = 'varimax', SMC = TRUE, fm = 'ml')
+m6
+```
+# Item Response Theory
+
+# Study 1
+
+```{r, include = FALSE}
+# Pre-test Item Characteristic Curves
+pre_item_irt <- irt.fa(pre_item_ME, plot = FALSE)
+# Post-test Item Characteristic Curves
+post_item_irt <- irt.fa(post_item_ME, plot = FALSE)
+```
+
+```{r}
+# Pre Item Characteristic Curves
+plot.irt(pre_item_irt, xlab = "Self-Focus",main = "Pre-test", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5"),ylim = c(0,1.2))
+# Post Item Characteristic Curves
+plot.irt(post_item_irt, xlab = "Self Focus",main = "Post-test", cut = 0, labels = c("Item 1", "Item 2", "Item 3", "Item 4", "Item 5"),ylim = c(0,1.2))
+```
+
+
+# Study 2
+
+```{r, include = FALSE}
+# Pre-test Item Characteristic Curves
+mirt_pre <- mirt(data = pre_item_attention, model = 1)
+# Post-test Item Characteristic Curves
+mirt_post <- mirt(data = post_item_attention, model = 1)
+```
+
+```{r}
+bwtheme <- standard.theme("pdf", color=FALSE)
+# Pre Item Characteristic Curves
+mirt_pre_plot <- plot(mirt_pre,type = 'infotrace', facet_items = FALSE, main = "Pre-test", ylim = c(0,1.2),xlim = c(-3,3))
+levels(mirt_pre_plot[["panel.args.common"]][["groups"]]) <- list("Item 1"="attention1...Transform.1", "Item 2" ="attention2...Transform.1", "Item 3"="attention3...Transform.1", "Item 4"="attention4...Transform.1", "Item 5"="attention5...Transform.1", "Item 6"="attention6...Transform.1", "Item 7"="attention7...Transform.1", "Item 8"="attention8...Transform.1", "Item 9"="attention9...Transform.1", "Item 10"="attention10...Transform.1")
+direct.label(mirt_pre_plot, 'top.points')
+update(trellis.last.object(), par.settings = bwtheme)
+
+# Post Item Characteristic Curves
+mirt_post_plot <- plot(mirt_post,type = 'infotrace', facet_items = FALSE, main = "Post-test", ylim = c(0,1.2), xlim = c(-3,3))
+levels(mirt_post_plot[["panel.args.common"]][["groups"]]) <- list("Item 1"="attention1b...Transform.1", "Item 2" ="attention2b...Transform.1", "Item 3"="attention3b...Transform.1", "Item 4"="attention4b...Transform.1", "Item 5"="attention5b...Transform.1", "Item 6"="attention6b...Transform.1", "Item 7"="attention7b...Transform.1", "Item 8"="attention8b...Transform.1", "Item 9"="attention9b...Transform.1", "Item 10"="attention10b...Transform.1")
+direct.label(mirt_post_plot, 'top.points')
+update(trellis.last.object(), par.settings = bwtheme)
+```
+
+# Descriptive Statistics
+
+# Study 1
+```{r}
+# Scales/Self-Focus
+# Pre-test
+describe(pre_item_ME,skew=FALSE)
+# Post-test
+describe(post_item_ME,skew=FALSE)
+
+# Outcome Variable/Anxiety
+# Pre-test
+describe(unlist(pre_anxiety), skew = FALSE)
+# Post-test
+describe(unlist(post_anxiety), skew = FALSE)
+```
+
+# Study 2
+```{r}
+# Scales/Self-focus
+# Pre-test
+describe(pre_item_attention_copy,skew=FALSE)
+# Post-test
+describe(post_item_attention_copy,skew=FALSE)
+
+# Outcome Variables/Anxiety
+# Pre-test
+describe(pre_anxiety_2, skew = FALSE)
+# Post-test
+describe(post_anxiety_2, skew = FALSE)
+```
+
+# Linear Regression
+
+# Study 1
+```{r}
+# pre anxiety, pre ME, and post ME predict post anxiety
+anx_change_1 <- post_anxiety-pre_anxiety
+ME_change_1 <- post_total_ME-pre_total_ME
+lm_1 <- lm(unlist(anx_change_1) ~ unlist(ME_change_1))
+plot(unlist(ME_change_1),unlist(anx_change_1), main = "Study 1", ylab = "Change in Anxiety", xlab = "Change in Self Focus")
+abline(lm_1)
+plot(lm_1)
+```
+
+# Study 2
+```{r}
+# pre anxiety, pre ME, and post ME predict post anxiety
+anx_change_2 <- post_anxiety_2-pre_anxiety_2
+attention_change_2 <- post_total_attention-pre_total_attention
+lm_2 <- lm(unlist(anx_change_2) ~ unlist(attention_change_2))
+plot(unlist(attention_change_2),unlist(anx_change_2), main = "Study 2", ylab = "Change in Anxiety", xlab = "Change in Self Focus")
+abline(lm_2)
+plot(lm_2)
+```
